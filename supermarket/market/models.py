@@ -1,7 +1,7 @@
 from django.db import models
 
 from django.contrib.auth.models import User
-# Create your models here.
+
 
 class Product(models.Model):
     code = models.CharField(max_length=10, unique=True)
@@ -11,7 +11,7 @@ class Product(models.Model):
 
     def __str__(self):
         return self.name
-    
+
     def increase_inventory(self, amount):
         self.inventory += amount
         self.save()
@@ -23,16 +23,17 @@ class Product(models.Model):
             self.inventory -= amount
             self.save()
 
+
 class Customer(models.Model):
     user = models.ForeignKey(User, on_delete=models.PROTECT)
     phone = models.CharField(max_length=20)
     address = models.TextField()
-    balance = models.IntegerField(default=20000)
+    balance = models.PositiveIntegerField(default=20000)
 
     def __str__(self):
         name = self.user.username
         return name
-        
+
     def deposit(self, amount):
         self.balance += amount
         self.save()
@@ -47,7 +48,7 @@ class Customer(models.Model):
 
 class OrderRow(models.Model):
     product = models.ForeignKey('Product', on_delete=models.PROTECT)
-    order = models.ForeignKey('Order', on_delete=models.PROTECT, related_name='rows')
+    order = models.ForeignKey('Order', on_delete=models.PROTECT)
     amount = models.IntegerField()
 
 
@@ -57,15 +58,28 @@ class Order(models.Model):
     STATUS_SUBMITTED = 2
     STATUS_CANCELED = 3
     STATUS_SENT = 4
-    
+
     customer = models.ForeignKey('Customer', on_delete=models.PROTECT)
     order_time = models.DateTimeField()
     total_price = models.IntegerField()
     status = models.IntegerField()
+    rows = models.ManyToManyField('Product', through='OrderRow')
 
     @staticmethod
     def initiate(customer):
-        pass
+        n = len(list(Order.objects.all()))
+        if n == 0:
+            o = Order()
+            return o
+        else:
+            count = 0
+            for item in list(Order.objects.all()):
+                if item.status == 1:
+                    return item
+                    break
+                else:
+                    o = Order()
+                    return o
 
     def add_product(self, product, amount):
         pass
