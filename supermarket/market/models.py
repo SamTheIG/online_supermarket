@@ -132,38 +132,33 @@ class Order(models.Model):
 
     status = models.IntegerField()
 
+    def __unicode__(self):
+        return self.customer
 
 
     @staticmethod
 
     def initiate(customer):
-
         n = len(list(Order.objects.all()))
-
         if n == 0:
-
-            o = Order(customer=customer, status=1)
-
+            o = Order()
+            o.order_time = datetime.datetime.now()
+            o.customer = customer
+            o.status = 1
+            o.save()
         else:
-
             count = 0
-
             for item in list(Order.objects.all()):
-
                 if item.status == 1:
-
                     o = item
-
                     break
-
                 count += 1
-
             if count == len(list(Order.objects.all())) - 1:
-
-                o = Order(customer=customer, status=1)
-
-
-
+                o = Order()
+                o.order_time = datetime.datetime.now()
+                o.customer = customer
+                o.status = 1
+                o.save()
         return o
 
 
