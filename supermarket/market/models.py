@@ -50,6 +50,7 @@ class OrderRow(models.Model):
     order = models.ForeignKey('Order', on_delete=models.CASCADE, related_name="rows")
     amount = models.PositiveIntegerField()
 
+
 class Order(models.Model):
     # Status values. DO NOT EDIT
     STATUS_SHOPPING = 1
@@ -57,10 +58,10 @@ class Order(models.Model):
     STATUS_CANCELED = 3
     STATUS_SENT = 4
     status = (
-        (STATUS_SHOPPING, 1),
-        (STATUS_SUBMITTED, 2),
-        (STATUS_CANCELED, 3),
-        (STATUS_SENT, 4)
+        (STATUS_SHOPPING, 'در حال خرید'),
+        (STATUS_SUBMITTED, 'ثبت‌شده'),
+        (STATUS_CANCELED, 'لغوشده'),
+        (STATUS_SENT, 'ارسال‌شده')
     )
     customer = models.ForeignKey('Customer', on_delete=models.CASCADE)
     order_time = models.DateTimeField(default=datetime.now())
@@ -72,7 +73,7 @@ class Order(models.Model):
 
     @staticmethod
     def initiate(customer):
-        n = Order.objects.all().count()
+        n = Order.objects.filter(customer=customer).count()
         if n == 0:
             o = Order(customer=customer, status=1)
             o.save()
@@ -125,7 +126,7 @@ class Order(models.Model):
                 for item in or1:
                     p1 = Product.objects.filter(name=item.product)[0]
                     p1_price = p1.price * item.amount
-                    self.total_price = p1_price
+                    self.total_price += p1_price
                     if p1.inventory < item.amount:
                         raise Exception('you can not add a product with amount more than the inventory')
                     else:
@@ -161,6 +162,7 @@ class Order(models.Model):
                 c1.deposit(p1_price)
                 c1.save()
             self.status = 3
+            self.total_price = 0
             self.save()
         else:
             raise Exception('you do not have a SUBMITTED order to cancel')
