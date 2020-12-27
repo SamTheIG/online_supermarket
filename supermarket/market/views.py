@@ -25,3 +25,10 @@ def product_list(request):
     if request.method == 'GET':
         return HttpResponse('you asked for the products list')
 >>>>>>> API_product
+
+def customer_insert(request):
+    if request.method != 'POST':
+        return HttpResponse('you need to request with POST method')
+    elif request.method == 'POST':
+        return HttpResponse('you asked to add a new customer')
+
