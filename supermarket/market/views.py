@@ -1,4 +1,4 @@
-from django.shortcuts import render
+from django.shortcuts import render, HttpResponse
 
 
 """
@@ -12,3 +12,16 @@ from django.shortcuts import render
 
 
 # Create your views here.
+<<<<<<< HEAD
+=======
+def product_insert(request):
+    # hint: you should check request method like below
+    if request.method != 'POST':
+        return HttpResponse('you asked to add a new product')
+        pass  # return appropriate error message
+    pass  # main logic and return normal response
+
+def product_list(request):
+    if request.method == 'GET':
+        return HttpResponse('you asked for the products list')
+>>>>>>> API_product
