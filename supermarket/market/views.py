@@ -12,8 +12,3 @@ from django.shortcuts import render
 
 
 # Create your views here.
-def product_insert(request):
-    # hint: you should check request method like below
-    if request.method != 'POST':
-        pass  # return appropriate error message
-    pass  # main logic and return normal response
