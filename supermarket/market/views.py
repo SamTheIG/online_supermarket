@@ -18,3 +18,7 @@ def product_insert(request):
         return HttpResponse('you asked to add a new product')
         pass  # return appropriate error message
     pass  # main logic and return normal response
+
+def product_list(request):
+    if request.method == 'GET':
+        return HttpResponse('you asked for the products list')
