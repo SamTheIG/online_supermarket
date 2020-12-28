@@ -2,7 +2,7 @@
 
 it's a simple website for supermarket based on Django.
 
-## todo:
+## TODO:
 - [x] complate the models
 - [ ] do some bugfix in models
 - [ ] create a html page for the website
