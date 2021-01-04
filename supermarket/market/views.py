@@ -46,6 +46,7 @@ def product_insert(request):
         data = {"id": num}
         return JsonResponse(data, status=201)
 
+
 def product_list(request):
     if request.method != 'GET':
         data = {"message": "wrong type of request (must be get)"}
@@ -60,6 +61,8 @@ def product_list(request):
             products = Product.objects.filter(name__contains = r)
             data = {"products": list(products.values("code", "name", "price", "inventory"))}
             return JsonResponse(data, status=200)
+
+
 def product_details(request, product_id):
     if request.method != 'GET':
         data = {"message": "Wrong type of request(must be GET)"}
@@ -74,6 +77,7 @@ def product_details(request, product_id):
             c = b[0]
             data = {"id": c.id, "code": c.code, "name": c.name, "price": c.price, "inventory": c.inventory}
             return JsonResponse(data, status=200)
+
 
 def product_edit(request, product_id):
     if request.method != 'POST':
@@ -94,6 +98,11 @@ def product_edit(request, product_id):
                 return JsonResponse(data, status=400)
             else:
                 pamount = data_raw["amount"]
+            try:
+                pamount = int(pamount)
+            except:
+                data = {"message": "wtf that was not an integer!"}
+                return JsonResponse(data, status=400)
             if pamount < 0:
                 pamount = -pamount
                 if p.inventory < pamount:
@@ -107,9 +116,3 @@ def product_edit(request, product_id):
                 p.save()
             data = {"id": p.id, "code": p.code, "name": p.name, "price": p.price, "inventory": p.inventory}
             return JsonResponse(data, status=200)
-
-def customer_insert(request):
-    if request.method != 'POST':
-        return HttpResponse('you need to request with POST method')
-    elif request.method == 'POST':
-        return HttpResponse('you asked to add a new customer')
