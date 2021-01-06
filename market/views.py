@@ -127,32 +127,7 @@ def customer_register(request):
     if request.method == 'POST':
         data_raw = request.body.decode('utf-8')
         data_raw = json.loads(data_raw)
-        print(data_raw)
-        try:
-            print(data_raw.get("username"))
-            assert data_raw.get("username") is not None
-            cusername = data_raw("username")
-            print(data_raw.get("password"))
-            assert data_raw.get("password") is not None
-            cpassword = data_raw.get("password")
-            print(data_raw.get("first_name"))
-            assert data_raw.get("first_name") is not None
-            cfirst_name = data_raw.get("first_name")
-            print(data_raw.get("last_name"))
-            assert data_raw.get("last_name") is not None
-            clast_name = data_raw.get("last_name")
-            print(data_raw.get("email"))
-            assert data_raw.get("email") is not None
-            cemail = data_raw.get("email")
-            print(data_raw.get("phone"))
-            assert data_raw.get("phone") is not None
-            cphone = data_raw.get("phone")
-            print(data_raw.get("address"))
-            assert data_raw.get("address") is not None
-            caddress = data_raw.get("address")
-        except:
-            data = {"message": "not enough information"}
-            return JsonResponse(data, status=400)
+        cusername = data_raw["username"]
         from django.contrib.auth.models import User
         U = User.objects.all()
         u = User()
@@ -161,16 +136,26 @@ def customer_register(request):
             if item.username == cusername:
                 data = {"message": "Username already exists"}
                 return JsonResponse(data, status=400)
+        cfirst_name = data_raw["first_name"]
         u.first_name = cfirst_name
+        clast_name = data_raw["last_name"]
         u.last_name = clast_name
+        cemail = data_raw["email"]
         u.email = cemail
+        cpassword = data_raw["password"]
         u.password = cpassword
         u.save()
         c1 = Customer()
         c1.user = u
+        cphone = data_raw["phone"]
         c1.phone = cphone
+        caddress = data_raw["address"]
         c1.address = caddress
-        c1.save()
+        try:
+            c1.save()
+        except:
+            data = {"message": "F me man"}
+            return JsonResponse(data, status=400)
         num = c1.id
         data = {"id": num}
         return JsonResponse(data, status=201)
@@ -306,14 +291,17 @@ def customer_edit(request, customer_id):
             data = {"message": "Cannot edit customers indentity and credentials"}
             return JsonResponse(data, status=403)
         if data_raw.get("first_name") != None:
-            customer.user.first_name = data_raw["first_name"]
-            customer.save()
+            u = customer.user
+            u.first_name = data_raw["first_name"]
+            u.save()
         if data_raw.get("last_name") != None:
-            customer.user.last_name = data_raw["last_name"]
-            customer.save()
+            u = customer.user
+            u.last_name = data_raw["last_name"]
+            u.save()
         if data_raw.get("email") != None:
-            customer.user.email = data_raw["email"]
-            customer.save()
+            u = customer.user
+            u.email = data_raw["email"]
+            u.save()
         if data_raw.get("phone") != None:
             customer.phone = data_raw["phone"]
             customer.save()
@@ -353,7 +341,6 @@ def customer_login(request):
     if request.method == 'POST':
         data_raw = request.body.decode('utf-8')
         data_raw = json.loads(data_raw)
-        print(data_raw)
         cuser = data_raw.get("username")
         cpass = data_raw.get("password")
         if cuser is None:
@@ -370,11 +357,15 @@ def customer_login(request):
                     data = {"message": "You are logged in successfully."}
                     request.session['customer_id'] = item.id
                     return JsonResponse(data, status=200)
+                elif u.password == cpass:
+                    data = {"message": "You are logged in successfully."}
+                    request.session['customer_id'] = item.id
+                    return JsonResponse(data, status=200)
                 else:
-                    data = {"message": "Username or Password is incorrect."}
+                    data = {"message": "Password is incorrect."}
                     return JsonResponse(data, status=404)
             else:
-                data = {"message": "Username or Password is incorrect."}
+                data = {"message": "Username is incorrect."}
                 return JsonResponse(data, status=404)
 
 
