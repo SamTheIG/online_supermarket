@@ -131,3 +131,6 @@ dmypy.json
 .idea/
 *.swp
 *.swo
+*/models.py
+*/views.py
+*/urls.py
