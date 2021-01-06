@@ -404,3 +404,149 @@ def customer_profile(request):
             except:
                 data = {"message": "You are not logged in."}
                 return JsonResponse(data, status=403)
+
+
+def shopping_cart(request):
+    if request.method != 'GET':
+        data = {"message": "wrong type of request (must be GET)"}
+        return JsonResponse(data, status=400)
+    if request.method == 'GET':
+        C = Customer.objects.all()
+        for item in C:
+            try:
+                if request.session['customer_id'] == item.id:
+                    o = Order.objects.filter(customer = item, status = 1)
+                    o = o[0]
+                    total_price = o.total_price
+                    or1 = OrderRow.objects.filter(order = o)
+                    if list(or1) is []:
+                        data = {"total_price": total_price, "items": []}
+                        return JsonResponse(data, status=200)
+                    products = list()
+                    for item in or1:
+                        product = item.product
+                        code = product.code
+                        name = product.name
+                        price = product.price
+                        amount = item.amount
+                        products.append({"code": code, "name": name, "price": price, "amount": amount})
+                    data = {"total_price": total_price, "items": products}
+                    return JsonResponse(data, status=200)
+            except:
+                data = {"message": "You are not logged in."}
+                return JsonResponse(data, status=403)
+
+
+def add_items(request):
+    if request.method != 'POST':
+        data = {"message": "wrong type of request (must be POST)"}
+        return JsonResponse(data, status=400)
+    if request.method == 'POST':
+        errors = list()
+        data_raw = request.body.decode('utf-8')
+        data_raw = json.loads(data_raw)
+        C = Customer.objects.all()
+        for item in C:
+            try:
+                assert request.session['customer_id'] == item.id
+            except:
+                data = {"message": "You are not logged in."}
+                return JsonResponse(data, status=403)
+            o = Order.objects.filter(customer = item, status = 1)
+            o = o[0]
+            for p in data_raw:
+                code = p.get("code")
+                amount = p.get("amount")
+                product = Product.objects.filter(code = code)
+                if product == []:
+                    errors.append({"code": code, "message": "product not found"})
+                else:
+                    product = product[0]
+                if amount > product.inventory:
+                    errors.append({"code": code, "message": "not enough inventory"})
+                o.add_product(product, amount)
+                o.save()
+            total_price = o.total_price
+            or1 = OrderRow.objects.filter(order = o)
+            products = list()
+            for item in or1:
+                product = item.product
+                code = product.code
+                name = product.name
+                price = product.price
+                amount = item.amount
+                products.append({"code": code, "name": name, "price": price, "amount": amount})
+            if len(errors) == 0:
+                data = {"total_price": total_price, "items": products}
+                return JsonResponse(data, statsu=200)
+            else:
+                data = {"total_price": total_price, "errors": errors, "items": products}
+                return JsonResponse(data, status=400)
+
+
+def remove_items(request):
+    if request.method != 'POST':
+        data = {"message": "wrong type of request (must be POST)"}
+        return JsonResponse(data, status=400)
+    if request.method == 'POST':
+        errors = list()
+        data_raw = request.body.decode('utf-8')
+        data_raw = json.loads(data_raw)
+        C = Customer.objects.all()
+        for item in C:
+            try:
+                assert request.session['customer_id'] == item.id
+            except:
+                data = {"message": "You are not logged in."}
+                return JsonResponse(data, status=403)
+            o = Order.objects.filter(customer = item, status = 1)
+            o = o[0]
+            for p in data_raw:
+                code = p.get("code")
+                amount = p.get("amount")
+                product = Product.objects.filter(code = code)
+                if product == []:
+                    errors.append({"code": code, "message": "product not found"})
+                else:
+                    product = product[0]
+                o.remove_product(product, amount)
+                o.save()
+                total_price = o.total_price
+                or1 = OrderRow.objects.filter(order = o)
+                products = list()
+                for item in or1:
+                    product = item.product
+                    code = product.code
+                    name = product.name
+                    price = product.price
+                    amount = item.amount
+                    products.append({"code": code, "name": name, "price": price, "amount": amount})
+                if len(errors) == 0:
+                    data = {"total_price": total_price, "items": products}
+                    return JsonResponse(data, statsu=200)
+                else:
+                    data = {"total_price": total_price, "errors": errors, "items": products}
+                    return JsonResponse(data, status=400)
+
+
+def submit(request):
+    if request.method != 'POST':
+        data = {"message": "wrong type of request (must be POST)"}
+        return JsonResponse(data, status=400)
+    if request.method == 'POST':
+        errors = list()
+        data_raw = request.body.decode('utf-8')
+        data_raw = json.loads(data_raw)
+        C = Customer.objects.all()
+        for item in C:
+            try:
+                assert request.session['customer_id'] == item.id
+            except:
+                data = {"message": "You are not logged in."}
+                return JsonResponse(data, status=403)
+            o = Order.objects.filter(customer = item)
+            try:
+                o.submit()
+            except Exception as e:
+                print(str(e))
+            return HttpResponse('fuck')

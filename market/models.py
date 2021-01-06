@@ -3,6 +3,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from datetime import datetime
 
+
 class Product(models.Model):
     code = models.CharField(max_length=10, unique=True)
     name = models.CharField(max_length=100)
@@ -102,10 +103,18 @@ class Order(models.Model):
             if list(a1) == []:
                 or1 = OrderRow(product=product, order=self, amount=amount)
                 or1.save()
+                price = product.price
+                order_price = amount * price
+                self.total_price += order_price
+                self.save()
             else:
                 or1 = a1[0]
                 or1.amount += amount
                 or1.save()
+                price = product.price
+                order_price = amount * price
+                self.total_price += order_price
+                self.save()
 
     def remove_product(self, product, amount=None):
         a1 = OrderRow.objects.filter(product=product, order=self)
@@ -115,9 +124,17 @@ class Order(models.Model):
             or1 = a1[0]
             if amount == None:
                 or1.delete()
+                price = product.price
+                order_price = amount * price
+                self.total_price -= order_price
+                self.save()
             else:
                 or1.amount -= amount
                 or1.save()
+                price = product.price
+                order_price = amount * price
+                self.total_price -= order_price
+                self.save()
 
     def submit(self):
         if self.status == 1:
