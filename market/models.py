@@ -118,14 +118,14 @@ class Order(models.Model):
 
     def remove_product(self, product, amount=None):
         a1 = OrderRow.objects.filter(product=product, order=self)
-        if a1 == []:
+        if list(a1) == []:
             raise Exception('This OrderRow does not exist')
         else:
             or1 = a1[0]
             if amount == None:
-                or1.delete()
                 price = product.price
-                order_price = amount * price
+                order_price = or1.amount * price
+                or1.delete()
                 self.total_price -= order_price
                 self.save()
             else:

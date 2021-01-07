@@ -464,7 +464,10 @@ def add_items(request):
                     product = product[0]
                 if amount > product.inventory:
                     errors.append({"code": code, "message": "not enough inventory"})
-                o.add_product(product, amount)
+                try:
+                    o.add_product(product, amount)
+                except Exception as e:
+                    errors.append({"code": code, "message": str(e)})
                 o.save()
             total_price = o.total_price
             or1 = OrderRow.objects.filter(order = o)
@@ -478,7 +481,7 @@ def add_items(request):
                 products.append({"code": code, "name": name, "price": price, "amount": amount})
             if len(errors) == 0:
                 data = {"total_price": total_price, "items": products}
-                return JsonResponse(data, statsu=200)
+                return JsonResponse(data, status=200)
             else:
                 data = {"total_price": total_price, "errors": errors, "items": products}
                 return JsonResponse(data, status=400)
@@ -509,7 +512,13 @@ def remove_items(request):
                     errors.append({"code": code, "message": "product not found"})
                 else:
                     product = product[0]
-                o.remove_product(product, amount)
+                try:
+                    if amount is None:
+                        o.remove_product(product)
+                    else:
+                        o.remove_product(product, amount)
+                except Exception as e:
+                    errors.append({"code": code, "message": str(e)})
                 o.save()
                 total_price = o.total_price
                 or1 = OrderRow.objects.filter(order = o)
@@ -523,7 +532,7 @@ def remove_items(request):
                     products.append({"code": code, "name": name, "price": price, "amount": amount})
                 if len(errors) == 0:
                     data = {"total_price": total_price, "items": products}
-                    return JsonResponse(data, statsu=200)
+                    return JsonResponse(data, status=200)
                 else:
                     data = {"total_price": total_price, "errors": errors, "items": products}
                     return JsonResponse(data, status=400)
@@ -544,9 +553,26 @@ def submit(request):
             except:
                 data = {"message": "You are not logged in."}
                 return JsonResponse(data, status=403)
-            o = Order.objects.filter(customer = item)
+            o = Order.objects.filter(customer = item, status=1)
+            o = o[0]
             try:
                 o.submit()
             except Exception as e:
-                print(str(e))
-            return HttpResponse('fuck')
+                data = {"message": str(e)}
+                return JsonResponse(data, status=400)
+            id = o.id
+            order_time = o.order_time
+            order_status = o.status
+            total_price = o.total_price
+            rows = list()
+            or1 = OrderRow.objects.filter(order = o)
+            for item in or1:
+                product = item.product
+                code = product.code
+                name = product.name
+                price = product.price
+                amount = item.amount
+                data = {"code": code, "name": name, "price": price, "amount": amount}
+                rows.append(data)
+            data = {"id": id, "order_time": str(order_time), "status": "submitted", "total_price": total_price, "rows": rows}
+            return JsonResponse(data, status=200)
