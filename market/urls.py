@@ -16,13 +16,9 @@ urlpatterns = [
     path('customer/login/', views.customer_login, name='customer_login'),
     path('customer/logout/', views.customer_logout, name='customer_logout'),
     path('customer/profile/', views.customer_profile, name='customer_profile'),
-
     path('shopping/cart/', views.shopping_cart, name='shopping_cart'),
     path('shopping/cart/add_items/', views.add_items, name='add_items'),
     path('shopping/cart/remove_items/', views.remove_items, name='remove_items'),
-    path('shopping/submit/', views.submit, name='submit'),
-
-
-
+    path('shopping/submit/', views.submit_order, name='submit_order'),
 
 ]

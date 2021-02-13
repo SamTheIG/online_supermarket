@@ -1,7 +1,7 @@
-from django.shortcuts import render, HttpResponse
+import json
+from django.shortcuts import HttpResponse
 from django.http import JsonResponse
 
-import json
 from django.contrib.auth.models import User
 from .models import *
 """
@@ -292,25 +292,49 @@ def customer_edit(request, customer_id):
             return JsonResponse(data, status=403)
         if data_raw.get("first_name") != None:
             u = customer.user
-            u.first_name = data_raw["first_name"]
-            u.save()
+            if data_raw["first_name"] is str(data_raw["first_name"]):
+                u.first_name = data_raw["first_name"]
+                u.save()
+            else:
+                data = {"message": "first_name must be string"}
+                return JsonResponse(data, status=400)
         if data_raw.get("last_name") != None:
             u = customer.user
-            u.last_name = data_raw["last_name"]
-            u.save()
+            if data_raw["last_name"] is str(data_raw["last_name"]):
+                u.last_name = data_raw["last_name"]
+                u.save()
+            else:
+                data = {"message": "last_name must be string"}
+                return JsonResponse(data, status=400)
         if data_raw.get("email") != None:
             u = customer.user
-            u.email = data_raw["email"]
-            u.save()
+            if data_raw["email"] is str(data_raw["email"]):
+                u.email = data_raw["email"]
+                u.save()
+            else:
+                data = {"message": "email must be string"}
+                return JsonResponse(data, status=400)
         if data_raw.get("phone") != None:
-            customer.phone = data_raw["phone"]
-            customer.save()
+            if data_raw["phone"] is str(data_raw["phone"]):
+                customer.phone = data_raw["phone"]
+                customer.save()
+            else:
+                data = {"message": "phone must be string"}
+                return JsonResponse(data, status=400)
         if data_raw.get("address") != None:
-            customer.address = data_raw["address"]
-            customer.save()
+            if data_raw["address"] is str(data_raw["address"]):
+                customer.address = data_raw["address"]
+                customer.save()
+            else:
+                data = {"message": "address must be string"}
+                return JsonResponse(data, status=400)
         if data_raw.get("balance") != None:
-            customer.balance = data_raw["balance"]
-            customer.save()
+            if data_raw["balance"] is int(data_raw["balance"]):
+                customer.balance = data_raw["balance"]
+                customer.save()
+            else:
+                data = {"message": "balance must be integer"}
+                return JsonResponse(data, status=400)
         # customer = Customer.objects.filter(id=customer_id)
         # customer = customer[0]
         cid = customer.id
@@ -414,27 +438,29 @@ def shopping_cart(request):
         C = Customer.objects.all()
         for item in C:
             try:
-                if request.session['customer_id'] == item.id:
-                    o = Order.objects.filter(customer = item, status = 1)
-                    o = o[0]
-                    total_price = o.total_price
-                    or1 = OrderRow.objects.filter(order = o)
-                    if list(or1) is []:
-                        data = {"total_price": total_price, "items": []}
-                        return JsonResponse(data, status=200)
-                    products = list()
-                    for item in or1:
-                        product = item.product
-                        code = product.code
-                        name = product.name
-                        price = product.price
-                        amount = item.amount
-                        products.append({"code": code, "name": name, "price": price, "amount": amount})
-                    data = {"total_price": total_price, "items": products}
-                    return JsonResponse(data, status=200)
+                assert request.session['customer_id'] == item.id
             except:
                 data = {"message": "You are not logged in."}
                 return JsonResponse(data, status=403)
+            customer = item
+            # import pdb; pdb.set_trace()
+            order = Order.objects.filter(customer = customer)
+            if list(order) == []:
+                data = {"total_price": 0, "items": []}
+                return JsonResponse(data, status=200)
+            order = order[0]
+            rows = OrderRow.objects.filter(order = order)
+            lst = list()
+            for item in rows:
+                product = item.product
+                code = product.code
+                name = product.name
+                price = product.price
+                amount = item.amount
+                lst.append({"code": code, "name": name, "price": price, "amount": amount})
+            total_price = order.total_price
+            data = {"total_price": total_price, "items": lst}
+            return JsonResponse(data, status=200)
 
 
 def add_items(request):
@@ -442,49 +468,71 @@ def add_items(request):
         data = {"message": "wrong type of request (must be POST)"}
         return JsonResponse(data, status=400)
     if request.method == 'POST':
-        errors = list()
+        C = Customer.objects.all()
+        for c in C:
+            try:
+                assert request.session['customer_id'] == c.id
+            except:
+                data = {"message": "you are not login"}
+                return JsonResponse(data, status=403)
+            customer = c
+            break
+        # import pdb; pdb.set_trace()
+        order = Order.initiate(customer)
         data_raw = request.body.decode('utf-8')
         data_raw = json.loads(data_raw)
-        C = Customer.objects.all()
-        for item in C:
+        errors = list()
+        for item in data_raw:
+            code = item.get("code")
+            amount = item.get("amount")
+            p = Product.objects.filter(code=code)
+            p = list(p)
+            if p == []:
+                data = {"code": code, "message": "product not found"}
+                errors.append(data)
+                continue
+            product = p[0]
+            # import pdb; pdb.set_trace()
             try:
-                assert request.session['customer_id'] == item.id
-            except:
-                data = {"message": "You are not logged in."}
-                return JsonResponse(data, status=403)
-            o = Order.objects.filter(customer = item, status = 1)
-            o = o[0]
-            for p in data_raw:
-                code = p.get("code")
-                amount = p.get("amount")
-                product = Product.objects.filter(code = code)
-                if product == []:
-                    errors.append({"code": code, "message": "product not found"})
-                else:
-                    product = product[0]
-                if amount > product.inventory:
-                    errors.append({"code": code, "message": "not enough inventory"})
-                try:
-                    o.add_product(product, amount)
-                except Exception as e:
-                    errors.append({"code": code, "message": str(e)})
-                o.save()
-            total_price = o.total_price
-            or1 = OrderRow.objects.filter(order = o)
-            products = list()
-            for item in or1:
-                product = item.product
-                code = product.code
-                name = product.name
-                price = product.price
-                amount = item.amount
-                products.append({"code": code, "name": name, "price": price, "amount": amount})
-            if len(errors) == 0:
-                data = {"total_price": total_price, "items": products}
-                return JsonResponse(data, status=200)
-            else:
-                data = {"total_price": total_price, "errors": errors, "items": products}
+                order.add_product(product, amount)
+            except Exception as e:
+                data = {"code": code, "message": str(e)}
+                errors.append(data)
+        total_price = order.total_price
+        or1 = OrderRow.objects.filter(order = order)
+        if list(or1) == []:
+            if errors != []:
+                data = {"total_price": total_price, "errors": errors, "items": []}
                 return JsonResponse(data, status=400)
+            if errors == []:
+                data = {"total_price": total_price, "items": []}
+                return JsonResponse(data, status=200)
+        if list(or1) != []:
+            if errors != []:
+                items = list()
+                for _ in or1:
+                    product = _.product
+                    code = product.code
+                    name = product.name
+                    price = product.price
+                    amount = _.amount
+                    data0 = {"code": code, "name": name, "price": price, "amount": amount}
+                    items.append(data0)
+                data = {"total_price": total_price, "errors": errors, "items": items}
+                return JsonResponse(data, status=400)
+            if errors == []:
+                items = list()
+                for _ in or1:
+                    product = _.product
+                    code = product.code
+                    name = product.name
+                    price = product.price
+                    amount = _.amount
+                    data0 = {"code": code, "name": name, "price": price, "amount": amount}
+                    items.append(data0)
+                data = {"total_price": total_price, "items": items}
+                return JsonResponse(data, status=200)
+# TODO:fix this god dammn thing for fuck sake
 
 
 def remove_items(request):
@@ -492,87 +540,99 @@ def remove_items(request):
         data = {"message": "wrong type of request (must be POST)"}
         return JsonResponse(data, status=400)
     if request.method == 'POST':
-        errors = list()
+        C = Customer.objects.all()
+        for c in C:
+            try:
+                assert request.session['customer_id'] == c.id
+            except:
+                data = {"message": "you are not login"}
+                return JsonResponse(data, status=403)
+            customer = c
+            break
+        # import pdb; pdb.set_trace()
+        order = Order.objects.filter(customer=customer, status=1)
+        order = list(order)
+        if order == []:
+            data = {"message": "you dont have a shopping order"}
+            return JsonResponse(data, status=400)
+        order = order[0]
         data_raw = request.body.decode('utf-8')
         data_raw = json.loads(data_raw)
-        C = Customer.objects.all()
-        for item in C:
+        errors = list()
+        for item in data_raw:
+            code = item.get("code")
+            amount = item.get("amount")
+            p = Product.objects.filter(code=code)
+            p = list(p)
+            if p == []:
+                data = {"code": code, "message": "product Not found"}
+                errors.append(data)
+                continue
+            product = p[0]
             try:
-                assert request.session['customer_id'] == item.id
-            except:
-                data = {"message": "You are not logged in."}
-                return JsonResponse(data, status=403)
-            o = Order.objects.filter(customer = item, status = 1)
-            o = o[0]
-            for p in data_raw:
-                code = p.get("code")
-                amount = p.get("amount")
-                product = Product.objects.filter(code = code)
-                if product == []:
-                    errors.append({"code": code, "message": "product not found"})
-                else:
-                    product = product[0]
-                try:
-                    if amount is None:
-                        o.remove_product(product)
-                    else:
-                        o.remove_product(product, amount)
-                except Exception as e:
-                    errors.append({"code": code, "message": str(e)})
-                o.save()
-                total_price = o.total_price
-                or1 = OrderRow.objects.filter(order = o)
-                products = list()
-                for item in or1:
-                    product = item.product
-                    code = product.code
-                    name = product.name
-                    price = product.price
-                    amount = item.amount
-                    products.append({"code": code, "name": name, "price": price, "amount": amount})
-                if len(errors) == 0:
-                    data = {"total_price": total_price, "items": products}
-                    return JsonResponse(data, status=200)
-                else:
-                    data = {"total_price": total_price, "errors": errors, "items": products}
-                    return JsonResponse(data, status=400)
+                order.remove_product(product, amount)
+            except Exception as e:
+                d = {"code": code, "message": str(e)}
+                errors.append(d)
+        total = order.total_price
+        or1 = OrderRow.objects.filter(order=order)
+        or1 = list(or1)
+        items = list()
+        for item in or1:
+            p = item.product
+            code = p.code
+            name = p.name
+            price = p.price
+            amount = item.amount
+            d = {"code": code, "name": name, "price": price, "amount": amount}
+            items.append(d)
+        if errors == []:
+            data = {"total_price": total, "items": items}
+            return JsonResponse(data, status=200)
+        if errors != []:
+            data = {"total_price": total, "errors": errors, "items": items}
+            return JsonResponse(data, status=400)
 
 
-def submit(request):
+def submit_order(request):
     if request.method != 'POST':
         data = {"message": "wrong type of request (must be POST)"}
         return JsonResponse(data, status=400)
     if request.method == 'POST':
-        errors = list()
-        data_raw = request.body.decode('utf-8')
-        data_raw = json.loads(data_raw)
         C = Customer.objects.all()
-        for item in C:
+        for c in C:
             try:
-                assert request.session['customer_id'] == item.id
+                assert request.session['customer_id'] == c.id
             except:
-                data = {"message": "You are not logged in."}
+                data = {"message": "you are not login"}
                 return JsonResponse(data, status=403)
-            o = Order.objects.filter(customer = item, status=1)
-            o = o[0]
-            try:
-                o.submit()
-            except Exception as e:
-                data = {"message": str(e)}
-                return JsonResponse(data, status=400)
-            id = o.id
-            order_time = o.order_time
-            order_status = o.status
-            total_price = o.total_price
-            rows = list()
-            or1 = OrderRow.objects.filter(order = o)
-            for item in or1:
-                product = item.product
-                code = product.code
-                name = product.name
-                price = product.price
-                amount = item.amount
-                data = {"code": code, "name": name, "price": price, "amount": amount}
-                rows.append(data)
-            data = {"id": id, "order_time": str(order_time), "status": "submitted", "total_price": total_price, "rows": rows}
-            return JsonResponse(data, status=200)
+            customer = c
+            break
+        order = Order.objects.filter(customer = customer, status=1)
+        order = list(order)
+        if order == []:
+            data = {"message": "you dont have a shopping order to submit"}
+            return JsonResponse(data, status=400)
+        order = order[0]
+        try:
+            order.submit()
+        except Exception as e:
+            data = {"message": str(e)}
+            return JsonResponse(data, status=400)
+        id = order.id
+        order_time = order.order_time
+        total = order.total_price
+        rows = list()
+        or1 = OrderRow.objects.filter(order=order)
+        or1 = list(or1)
+        for _ in or1:
+            amount = _.amount
+            p = _.product
+            code = p.code
+            name = p.name
+            price = p.price
+            d = {"code": code, "name": name, "price": price, "amount": amount}
+            rows.append(d)
+        data = {"id": id, "order_time": order_time, "status": "submitted",
+             "total_price": total, "rows": rows}
+        return JsonResponse(data, status=200)
