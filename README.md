@@ -4,7 +4,7 @@ it's a simple website for supermarket based on Django.
 
 ## TODO:
 - [x] complate the models
-- [ ] do some bugfix in models
+- [x] do some bugfix in models
 - [ ] create a html page for the website
-- [ ] create API for this website
-- [ ] check the APIs for bugs with robots
+- [x] create API for this website
+- [x] check the APIs for bugs with robots
