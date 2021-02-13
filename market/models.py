@@ -3,7 +3,6 @@ from django.db import models
 from django.contrib.auth.models import User
 from datetime import datetime
 
-
 class Product(models.Model):
     code = models.CharField(max_length=10, unique=True)
     name = models.CharField(max_length=100)
@@ -48,7 +47,7 @@ class Customer(models.Model):
 
 class OrderRow(models.Model):
     product = models.ForeignKey('Product', on_delete=models.CASCADE)
-    order = models.ForeignKey('Order', on_delete=models.CASCADE, related_name="rows")
+    order = models.ForeignKey('Order', on_delete=models.CASCADE)
     amount = models.PositiveIntegerField()
 
 
@@ -96,45 +95,84 @@ class Order(models.Model):
     def add_product(self, product, amount):
         if amount == 0:
             raise Exception('The amount can not be 0')
+        elif amount is None:
+            raise Exception('The amount can not be None')
         elif amount > product.inventory:
-            raise Exception('you can not add a product more than it inventory')
+            raise Exception('you can not add a product more than its inventory')
         else:
             a1 = OrderRow.objects.filter(product=product, order=self)
             if list(a1) == []:
                 or1 = OrderRow(product=product, order=self, amount=amount)
-                or1.save()
-                price = product.price
-                order_price = amount * price
-                self.total_price += order_price
+                p = product.price * amount
+                try:
+                    product.decrease_inventory(amount)
+                except Exception as e:
+                    raise Exception(str(e))
+                c = self.customer
+                try:
+                    c.spend(p)
+                except Exception as e:
+                    raise Exception(str(e))
+                self.total_price += p
                 self.save()
+                or1.save()
             else:
                 or1 = a1[0]
                 or1.amount += amount
-                or1.save()
-                price = product.price
-                order_price = amount * price
-                self.total_price += order_price
+                p = product.price * amount
+                try:
+                    product.decrease_inventory(amount)
+                except Exception as e:
+                    raise Exception(str(e))
+                c = self.customer
+                try:
+                    c.spend(p)
+                except Exception as e:
+                    raise Exception(str(e))
+                self.total_price += p
                 self.save()
+                or1.save()
 
     def remove_product(self, product, amount=None):
         a1 = OrderRow.objects.filter(product=product, order=self)
-        if list(a1) == []:
+        if a1 == []:
             raise Exception('This OrderRow does not exist')
         else:
             or1 = a1[0]
-            if amount == None:
-                price = product.price
-                order_price = or1.amount * price
+            if amount is None:
+                a = or1.amount
+                p = Product.price
+                p1 = p * a
+                product.increase_inventory(a)
+                c = self.customer
+                c.deposit(p1)
+                self.total_price -= p1
+                self.save()
                 or1.delete()
-                self.total_price -= order_price
-                self.save()
             else:
-                or1.amount -= amount
-                or1.save()
-                price = product.price
-                order_price = amount * price
-                self.total_price -= order_price
-                self.save()
+                if or1.amount < amount:
+                    raise Exception("you cant remove product with less amount")
+                elif or1.amount == amount:
+                    a = or1.amount
+                    p = product.price
+                    p1 = p * a
+                    product.increase_inventory(a)
+                    c = self.customer
+                    c.deposit(p1)
+                    self.total_price -= p1
+                    self.save()
+                    or1.delete()
+                else:
+                    a = amount
+                    p = Product.price
+                    p1 = p * a
+                    product.increase_inventory(a)
+                    c = self.customer
+                    c.deposit(p1)
+                    self.total_price -= p1
+                    or1.amount -= amount
+                    or1.save()
+                    self.save()
 
     def submit(self):
         if self.status == 1:
@@ -143,22 +181,17 @@ class Order(models.Model):
                 for item in or1:
                     p1 = Product.objects.filter(name=item.product)[0]
                     p1_price = p1.price * item.amount
-                    self.total_price += p1_price
                     if p1.inventory < item.amount:
                         raise Exception('you can not add a product with amount more than the inventory')
-                    else:
-                        p1.decrease_inventory(item.amount)
-                        p1.save()
-
                     c1 = self.customer
                     if c1.balance < p1_price:
                         raise Exception('you can not add a product with price more than your balance')
-
                     elif c1.balance < self.total_price:
                         raise Exception('Your balance is less then total price')
-                    else:
-                        c1.spend(p1_price)
-                        c1.save()
+                    p1.decrease_inventory(item.amount)
+                    p1.save()
+                    c1.spend(p1_price)
+                    c1.save()
                 self.status = 2
                 self.order_time = datetime.now()
                 self.save()
@@ -187,5 +220,6 @@ class Order(models.Model):
     def send(self):
         if self.status == 2:
             self.status = 4
+            self.save()
         else:
             raise Exception('you can not SEND a non SUBMITTED order')
